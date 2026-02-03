@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사과 게임</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #87ceeb 0%, #e0f6ff 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      color: #c41e3a;
+      margin-bottom: 0.5rem;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .info {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #333;
+    }
+
+    .game-wrap {
+      position: relative;
+      background: rgba(255,255,255,0.6);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      user-select: none;
+      position: relative;
+    }
+
+    .apple {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff6b6b, #c41e3a 60%, #8b0000);
+      box-shadow: inset -4px -4px 12px rgba(0,0,0,0.2), 2px 4px 8px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+      overflow: visible;
+    }
+
+    .apple:hover { transform: scale(1.05); }
+    .apple.selected {
+      box-shadow: 0 0 0 3px #ffd700, inset -4px -4px 12px rgba(0,0,0,0.2);
+      transform: scale(1.08);
+    }
+
+    /* 숫자 색상: 노랑, 흰색만 */
+    .apple .num { font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .apple .num.c1 { color: #ffd700; }
+    .apple .num.c2 { color: #ffffff; text-shadow: 0 0 2px #000, 0 1px 3px #333; }
+
+    .apple.blink {
+      animation: apple-blink 0.4s ease-in-out 3;
+    }
+
+    @keyframes apple-blink {
+      0%, 100% { opacity: 1; filter: brightness(1); }
+      50% { opacity: 0.4; filter: brightness(1.5); }
+    }
+
+    .apple.exploding {
+      pointer-events: none;
+      animation: apple-explode 0.5s ease-out forwards;
+    }
+
+    @keyframes apple-explode {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+      }
+      30% {
+        transform: scale(1.3);
+        opacity: 1;
+        filter: brightness(1.4);
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+        filter: brightness(2);
+      }
+    }
+
+    /* 폭발 파티클 */
+    .particles {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      width: 1px;
+      height: 1px;
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      left: -4px;
+      top: -4px;
+      animation: particle-fly 0.5s ease-out forwards;
+    }
+
+    .particle:nth-child(1) { background: #ff3333; animation-name: particle-fly-1; }
+    .particle:nth-child(2) { background: #ffd700; animation-name: particle-fly-2; }
+    .particle:nth-child(3) { background: #ff6b6b; animation-name: particle-fly-3; }
+    .particle:nth-child(4) { background: #c41e3a; animation-name: particle-fly-4; }
+    .particle:nth-child(5) { background: #ffaa00; animation-name: particle-fly-5; }
+
+    @keyframes particle-fly-1 {
+      to { transform: translate(25px, 0) scale(0); opacity: 0; }
+    }
+    @keyframes particle-fly-2 {
+      to { transform: translate(8px, 24px) scale(0); opacity: 0; }
+    }
+    @keyframes particle-fly-3 {
+      to { transform: translate(-20px, 15px) scale(0); opacity: 0; }
+    }
+    @keyframes particle-fly-4 {
+      to { transform: translate(-20px, -15px) scale(0); opacity: 0; }
+    }
+    @keyframes particle-fly-5 {
+      to { transform: translate(8px, -24px) scale(0); opacity: 0; }
+    }
+
+    .start-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      color: #fff;
+    }
+
+    .start-screen.hide {
+      display: none;
+    }
+
+    .start-screen .start-msg {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+      color: #ffd700;
+    }
+
+    .start-screen .start-btn {
+      padding: 1rem 3rem;
+      font-size: 1.3rem;
+      border: none;
+      border-radius: 12px;
+      background: #22c55e;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.15s;
+    }
+
+    .start-screen .start-btn:hover {
+      transform: scale(1.05);
+      background: #16a34a;
+    }
+
+    .game-over {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      color: #fff;
+    }
+
+    .game-over.show {
+      display: flex;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .game-over h2 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #ff6b6b;
+    }
+
+    .game-over p { margin-bottom: 1.5rem; font-size: 1.1rem; }
+    .game-over button {
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #c41e3a;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .game-over button:hover { background: #a01830; }
+
+    /* 축포(confetti) 컨테이너 */
+    .confetti-wrap {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+      display: none;
+    }
+
+    .confetti-wrap.show { display: block; }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      animation: confetti-fall 3s ease-out forwards;
+    }
+
+    .confetti.s1 { background: #ff3333; left: 10%; animation-delay: 0s; }
+    .confetti.s2 { background: #ffd700; left: 20%; animation-delay: 0.1s; }
+    .confetti.s3 { background: #2563eb; left: 30%; animation-delay: 0.2s; }
+    .confetti.s4 { background: #1a1a1a; left: 40%; animation-delay: 0.05s; }
+    .confetti.s5 { background: #fff; left: 50%; animation-delay: 0.15s; }
+    .confetti.s6 { background: #ff6b6b; left: 60%; animation-delay: 0.25s; }
+    .confetti.s7 { background: #ffaa00; left: 70%; animation-delay: 0.08s; }
+    .confetti.s8 { background: #4ade80; left: 80%; animation-delay: 0.18s; }
+    .confetti.s9 { background: #c41e3a; left: 90%; animation-delay: 0.28s; }
+    .confetti.s10 { background: #a78bfa; left: 15%; animation-delay: 0.12s; }
+    .confetti.s11 { background: #f472b6; left: 55%; animation-delay: 0.22s; }
+    .confetti.s12 { background: #22d3ee; left: 75%; animation-delay: 0.07s; }
+
+    @keyframes confetti-fall {
+      0% {
+        top: -10%;
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      100% {
+        top: 110%;
+        transform: rotate(720deg) scale(0.5);
+        opacity: 0.3;
+      }
+    }
+
+    .sum-hint {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+      min-height: 1.2em;
+    }
+
+    .streak-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.85);
+      color: #ffd700;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      z-index: 1001;
+      animation: toast-in 0.4s ease-out;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    /* 8자 회전 컨테이너 */
+    .eight-wrap {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      z-index: 998;
+      display: none;
+    }
+
+    .eight-wrap.show {
+      display: block;
+    }
+
+    .eight-wrap .orbit-center {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1px;
+      height: 1px;
+      animation: eight-orbit 3s linear forwards;
+    }
+
+    .eight-wrap .eight-track {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 280px;
+      height: 140px;
+      transform: translateX(180px);
+      margin-left: -140px;
+      margin-top: -70px;
+    }
+
+    @keyframes eight-orbit {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .eight-wrap .apple-clone {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      margin-left: -24px;
+      margin-top: -24px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff6b6b, #c41e3a 60%, #8b0000);
+      box-shadow: inset -3px -3px 8px rgba(0,0,0,0.2), 2px 4px 8px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      animation: eight-fade-out 0.6s ease-out 2.4s forwards;
+      opacity: 1;
+    }
+
+    .eight-wrap .apple-clone .num {
+      font-weight: 900;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    @keyframes eight-fade-out {
+      to { opacity: 0; transform: scale(0.3); }
+    }
+
+    /* 다음 단계 선택 모달 */
+    .stage-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1002;
+      color: #fff;
+    }
+
+    .stage-modal.show {
+      display: flex;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .stage-modal h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      color: #ffd700;
+      text-align: center;
+      padding: 0 1rem;
+    }
+
+    .stage-modal .buttons {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .stage-modal button {
+      padding: 0.9rem 2.5rem;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.15s;
+    }
+
+    .stage-modal button:hover {
+      transform: scale(1.05);
+    }
+
+    .stage-modal .btn-yes {
+      background: #22c55e;
+      color: #fff;
+    }
+
+    .stage-modal .btn-no {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    /* BYE-BYE 화면 */
+    .bye-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1003;
+      color: #fff;
+    }
+
+    .bye-screen.show {
+      display: flex;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .bye-screen .bye-text {
+      font-size: 4rem;
+      font-weight: 900;
+      color: #ffd700;
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 30px rgba(255,215,0,0.5);
+      animation: bye-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes bye-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.05); }
+    }
+
+    .stage-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      color: #ffd700;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      z-index: 1002;
+      animation: toast-in 0.3s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <h1>🍎 사과 게임</h1>
+  <div class="info">
+    <span>📌 <strong id="stageInfo">1단계 0/3</strong></span>
+    <span>⏱ 다음 성공까지: <strong id="timer">-</strong></span>
+    <span>🕐 대기(10초 후 점멸): <strong id="idle">0</strong>초</span>
+    <span>⚠️ 경고: <strong id="strike">0</strong>회</span>
+  </div>
+  <div class="sum-hint" id="sumHint">합이 10이 되도록 사과를 드래그로 선택하세요!</div>
+
+  <div class="game-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="start-screen" id="startScreen">
+    <p class="start-msg">준비되면 시작 버튼을 누르세요</p>
+    <button type="button" class="start-btn" id="startBtn">시작</button>
+  </div>
+
+  <div class="game-over" id="gameOver">
+    <h2>게임 오버</h2>
+    <p>성공 후 20초가 두 번 지나 완료하지 못했습니다.</p>
+    <button type="button" id="restartBtn">다시 하기</button>
+  </div>
+
+  <div class="confetti-wrap" id="confettiWrap"></div>
+  <div class="streak-toast" id="streakToast" style="display:none;">🎉 연속 3회 성공! 축포! 🎉</div>
+
+  <div class="eight-wrap" id="eightWrap">
+    <div class="orbit-center">
+      <div class="eight-track" id="eightTrack"></div>
+    </div>
+  </div>
+
+  <div class="stage-modal" id="stageModal">
+    <h2>다음 단계로 진행하시겠습니까?</h2>
+    <div class="buttons">
+      <button type="button" class="btn-yes" id="stageYes">YES</button>
+      <button type="button" class="btn-no" id="stageNo">NO</button>
+    </div>
+  </div>
+
+  <div class="bye-screen" id="byeScreen">
+    <div class="bye-text">BYE-BYE</div>
+  </div>
+
+  <script>
+    (function () {
+      const GRID_COLS = 5;
+      const GRID_ROWS = 5;
+      const SUCCESS_TIMEOUT_SEC = 20;
+      const IDLE_BLINK_SEC = 10;
+      const FAST_COMPLETE_SEC = 3;
+      const FAST_STREAK = 3;
+      const STAGE_GOALS = [3, 4, 5, 6, 7];
+
+      let cells = [];
+      let selectedSet = new Set();
+      let isDragging = false;
+      let gameOver = false;
+      let idleSec = 0;
+      let lastDragTime = 0;
+      let completeTimes = [];
+      let idleInterval = null;
+      let strikeCount = 0;
+      let successTimer = null;
+      let countdownInterval = null;
+      let successCountdownSec = 0;
+      let currentStage = 1;
+      let stageSuccessCount = 0;
+
+      const gridEl = document.getElementById('grid');
+      const timerEl = document.getElementById('timer');
+      const idleEl = document.getElementById('idle');
+      const strikeEl = document.getElementById('strike');
+      const stageInfoEl = document.getElementById('stageInfo');
+      const startScreen = document.getElementById('startScreen');
+      const startBtn = document.getElementById('startBtn');
+      const sumHintEl = document.getElementById('sumHint');
+      const gameOverEl = document.getElementById('gameOver');
+      const confettiWrap = document.getElementById('confettiWrap');
+      const streakToast = document.getElementById('streakToast');
+      const restartBtn = document.getElementById('restartBtn');
+      const eightWrap = document.getElementById('eightWrap');
+      const eightTrack = document.getElementById('eightTrack');
+      const stageModal = document.getElementById('stageModal');
+      const stageYes = document.getElementById('stageYes');
+      const stageNo = document.getElementById('stageNo');
+      const byeScreen = document.getElementById('byeScreen');
+
+      const numColors = ['c1', 'c2'];
+
+      function randomNum() {
+        return Math.floor(Math.random() * 9) + 1;
+      }
+
+      function createApple(value, index) {
+        const div = document.createElement('div');
+        div.className = 'apple';
+        div.dataset.index = index;
+        div.dataset.value = value;
+        const span = document.createElement('span');
+        span.className = 'num ' + numColors[index % numColors.length];
+        span.textContent = value;
+        div.appendChild(span);
+        return div;
+      }
+
+      function buildGrid() {
+        gridEl.innerHTML = '';
+        cells = [];
+        for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) {
+          const value = randomNum();
+          cells.push({ value, el: null });
+          const apple = createApple(value, i);
+          cells[i].el = apple;
+          gridEl.appendChild(apple);
+        }
+      }
+
+      function getSum() {
+        let s = 0;
+        selectedSet.forEach(i => { s += cells[i].value; });
+        return s;
+      }
+
+      function updateHint() {
+        const sum = getSum();
+        if (selectedSet.size === 0) {
+          sumHintEl.textContent = '합이 10이 되도록 사과를 드래그로 선택하세요!';
+        } else {
+          sumHintEl.textContent = `선택 합: ${sum} ${sum === 10 ? '✓ 10! 놓으면 제거됩니다.' : ''}`;
+        }
+      }
+
+      function updateStageInfo() {
+        const goal = STAGE_GOALS[currentStage - 1];
+        stageInfoEl.textContent = currentStage + '단계 ' + stageSuccessCount + '/' + goal;
+      }
+
+      function checkStageAdvance() {
+        const goal = STAGE_GOALS[currentStage - 1];
+        if (stageSuccessCount < goal) return;
+        if (currentStage < 5) {
+          const completed = currentStage;
+          currentStage++;
+          stageSuccessCount = 0;
+          updateStageInfo();
+          showStageToast(completed + '단계 성공! ' + currentStage + '단계로 진입!');
+        } else {
+          currentStage = 1;
+          stageSuccessCount = 0;
+          updateStageInfo();
+          showStageToast('5단계 완료! 모두 종료. 1단계로 돌아갑니다.');
+        }
+      }
+
+      function showStageToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'stage-toast';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+      }
+
+      function addParticles(parent) {
+        const wrap = document.createElement('div');
+        wrap.className = 'particles';
+        for (let i = 0; i < 5; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          wrap.appendChild(p);
+        }
+        parent.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 600);
+      }
+
+      function removeApples(indices) {
+        const order = [...indices].sort((a, b) => a - b);
+        order.forEach(idx => {
+          const cell = cells[idx];
+          if (!cell || !cell.el) return;
+          cell.el.classList.add('exploding');
+          addParticles(cell.el);
+        });
+        setTimeout(() => {
+          order.forEach(idx => {
+            const cell = cells[idx];
+            if (cell && cell.el) cell.el.remove();
+            cells[idx] = null;
+          });
+          // 재배치: 빈 칸을 위로 채우고 새 사과로 채우기
+          const compact = cells.filter(c => c != null);
+          const emptyCount = GRID_COLS * GRID_ROWS - compact.length;
+          for (let i = 0; i < emptyCount; i++) {
+            compact.push({ value: randomNum(), el: null });
+          }
+          cells = compact;
+          gridEl.innerHTML = '';
+          cells.forEach((cell, i) => {
+            const apple = createApple(cell.value, i);
+            cell.el = apple;
+            gridEl.appendChild(apple);
+          });
+          rebindDrag();
+        }, 520);
+      }
+
+      function checkComplete() {
+        if (gameOver) return;
+        if (getSum() !== 10) return;
+
+        const now = Date.now() / 1000;
+        completeTimes.push(now);
+        if (completeTimes.length > FAST_STREAK) completeTimes.shift();
+
+        const toRemove = new Set(selectedSet);
+        const isAllCleared = toRemove.size === cells.length;
+
+        selectedSet.clear();
+        updateHint();
+
+        if (isAllCleared) {
+          allClearedExit(toRemove);
+          return;
+        }
+
+        removeApples(toRemove);
+
+        stageSuccessCount++;
+        updateStageInfo();
+        checkStageAdvance();
+
+        startSuccessTimer();
+
+        let streakOk = completeTimes.length >= FAST_STREAK;
+        if (streakOk) {
+          for (let i = 1; i < completeTimes.length; i++) {
+            if (completeTimes[i] - completeTimes[i - 1] > FAST_COMPLETE_SEC) {
+              streakOk = false;
+              break;
+            }
+          }
+        }
+        if (streakOk) {
+          completeTimes.length = 0;
+          showConfetti();
+        }
+      }
+
+      function allClearedExit(indices) {
+        gameOver = true;
+        if (successTimer) clearTimeout(successTimer);
+        successTimer = null;
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+        if (idleInterval) clearInterval(idleInterval);
+        timerEl.textContent = '-';
+        idleEl.textContent = '0';
+
+        const order = [...indices].sort((a, b) => a - b);
+        const clones = [];
+        order.forEach(idx => {
+          const cell = cells[idx];
+          if (!cell || !cell.el) return;
+          const clone = cell.el.cloneNode(true);
+          clone.classList.remove('selected', 'exploding');
+          clone.classList.add('apple-clone');
+          clone.style.position = 'absolute';
+          clone.style.marginLeft = '-24px';
+          clone.style.marginTop = '-24px';
+          clone.style.width = '48px';
+          clone.style.height = '48px';
+          clone.style.pointerEvents = 'none';
+          clones.push({ el: clone, value: cell.value });
+          cell.el.remove();
+        });
+
+        const n = clones.length;
+        const trackW = 280;
+        const trackH = 140;
+        const cx = trackW / 2;
+        const cy = trackH / 2;
+        const rx = 110;
+        const ry = 45;
+
+        clones.forEach((item, k) => {
+          const t = (2 * Math.PI * k) / n;
+          const x = cx + rx * Math.cos(t);
+          const y = cy + ry * Math.sin(2 * t);
+          item.el.style.left = x + 'px';
+          item.el.style.top = y + 'px';
+          eightTrack.appendChild(item.el);
+        });
+
+        gridEl.innerHTML = '';
+        cells = [];
+
+        eightWrap.classList.add('show');
+
+        setTimeout(() => {
+          eightWrap.classList.remove('show');
+          eightTrack.innerHTML = '';
+          stageModal.classList.add('show');
+        }, 3200);
+      }
+
+      function onStageYes() {
+        stageModal.classList.remove('show');
+        init();
+      }
+
+      function onStageNo() {
+        stageModal.classList.remove('show');
+        byeScreen.classList.add('show');
+      }
+
+      function showConfetti() {
+        streakToast.style.display = 'block';
+        setTimeout(() => { streakToast.style.display = 'none'; }, 2000);
+        confettiWrap.innerHTML = '';
+        const colors = ['#ff3333', '#ffd700', '#2563eb', '#1a1a1a', '#fff', '#ff6b6b', '#ffaa00', '#4ade80', '#c41e3a', '#a78bfa', '#f472b6', '#22d3ee'];
+        for (let i = 0; i < 50; i++) {
+          const c = document.createElement('div');
+          c.className = 'confetti';
+          c.style.left = Math.random() * 100 + '%';
+          c.style.background = colors[i % colors.length];
+          c.style.animationDelay = (Math.random() * 0.5) + 's';
+          c.style.width = (6 + Math.random() * 8) + 'px';
+          c.style.height = c.style.width;
+          confettiWrap.appendChild(c);
+        }
+        confettiWrap.classList.add('show');
+        setTimeout(() => {
+          confettiWrap.classList.remove('show');
+          confettiWrap.innerHTML = '';
+        }, 3500);
+      }
+
+      function toggleSelect(index) {
+        if (cells[index] == null || !cells[index].el) return;
+        if (selectedSet.has(index)) {
+          selectedSet.delete(index);
+          cells[index].el.classList.remove('selected');
+        } else {
+          selectedSet.add(index);
+          cells[index].el.classList.add('selected');
+        }
+        updateHint();
+      }
+
+      function rebindDrag() {
+        gridEl.querySelectorAll('.apple').forEach(el => {
+          el.addEventListener('mousedown', onDown);
+        });
+      }
+
+      function onDown(e) {
+        if (gameOver) return;
+        const el = e.target.closest('.apple');
+        if (!el) return;
+        e.preventDefault();
+        isDragging = true;
+        lastDragTime = Date.now();
+        idleSec = 0;
+        idleEl.textContent = '0';
+        const idx = parseInt(el.dataset.index, 10);
+        selectedSet.clear();
+        gridEl.querySelectorAll('.apple').forEach(a => a.classList.remove('selected'));
+        toggleSelect(idx);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      }
+
+      function onMove(e) {
+        if (!isDragging) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const apple = el && el.closest('.apple');
+        if (apple && apple.parentNode === gridEl) {
+          const idx = parseInt(apple.dataset.index, 10);
+          if (!selectedSet.has(idx)) {
+            selectedSet.add(idx);
+            apple.classList.add('selected');
+            updateHint();
+          }
+        }
+      }
+
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if (isDragging) {
+          checkComplete();
+        }
+        isDragging = false;
+      }
+
+      function startSuccessTimer() {
+        if (successTimer) clearTimeout(successTimer);
+        if (countdownInterval) clearInterval(countdownInterval);
+        successCountdownSec = SUCCESS_TIMEOUT_SEC;
+        timerEl.textContent = successCountdownSec + '초';
+
+        countdownInterval = setInterval(() => {
+          successCountdownSec--;
+          timerEl.textContent = successCountdownSec > 0 ? successCountdownSec + '초' : '0초';
+          if (successCountdownSec <= 0 && countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+        }, 1000);
+
+        successTimer = setTimeout(() => {
+          if (countdownInterval) clearInterval(countdownInterval);
+          countdownInterval = null;
+          strikeCount++;
+          strikeEl.textContent = strikeCount;
+          timerEl.textContent = '-';
+
+          if (strikeCount >= 2) {
+            endGame();
+            return;
+          }
+          successTimer = null;
+        }, SUCCESS_TIMEOUT_SEC * 1000);
+      }
+
+      function startTimers() {
+        if (idleInterval) clearInterval(idleInterval);
+        idleSec = 0;
+        idleEl.textContent = '0';
+        if (!successTimer && strikeCount === 0) timerEl.textContent = '-';
+
+        idleInterval = setInterval(() => {
+          idleSec++;
+          idleEl.textContent = idleSec;
+          if (idleSec >= IDLE_BLINK_SEC) {
+            idleSec = 0;
+            idleEl.textContent = '0';
+            blinkAllApples();
+          }
+        }, 1000);
+      }
+
+      function blinkAllApples() {
+        gridEl.querySelectorAll('.apple').forEach(el => {
+          el.classList.add('blink');
+          setTimeout(() => el.classList.remove('blink'), 400 * 3);
+        });
+      }
+
+      function endGame() {
+        gameOver = true;
+        if (successTimer) clearTimeout(successTimer);
+        successTimer = null;
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+        gameOverEl.classList.add('show');
+      }
+
+      function init() {
+        gameOver = false;
+        strikeCount = 0;
+        currentStage = 1;
+        stageSuccessCount = 0;
+        completeTimes = [];
+        selectedSet.clear();
+        if (successTimer) clearTimeout(successTimer);
+        successTimer = null;
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+        gameOverEl.classList.remove('show');
+        confettiWrap.classList.remove('show');
+        stageModal.classList.remove('show');
+        byeScreen.classList.remove('show');
+        eightWrap.classList.remove('show');
+        eightTrack.innerHTML = '';
+        startScreen.classList.add('hide');
+        strikeEl.textContent = '0';
+        timerEl.textContent = '-';
+        updateStageInfo();
+        buildGrid();
+        rebindDrag();
+        startTimers();
+        updateHint();
+      }
+
+      function onStartClick() {
+        startScreen.classList.add('hide');
+        startTimers();
+      }
+
+      restartBtn.addEventListener('click', init);
+      startBtn.addEventListener('click', onStartClick);
+      stageYes.addEventListener('click', onStageYes);
+      stageNo.addEventListener('click', onStageNo);
+
+      buildGrid();
+      rebindDrag();
+      updateHint();
+      timerEl.textContent = '-';
+      strikeEl.textContent = '0';
+      updateStageInfo();
+    })();
+  </script>
+</body>
+</html>

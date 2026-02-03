@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>실습</title>
+</head>
+<body>
+  <h1>HTML 실습 페이지</h1>
+
+  <button type="button" onclick="showMessage()">메시지 보이기/숨기기</button>
+  <button type="button" onclick="changeColor()">글자 색 빨간색</button>
+
+  <input type="text" id="userInput" placeholder="이름을 입력하세요">
+  <button type="button" onclick="showInput()">입력값 출력</button>
+
+  <p id="msg"></p>
+
+  <script>
+    console.log("스크립트 로드됨");
+
+    function showMessage() {
+      const text = document.getElementById("msg");
+      if (text.innerHTML === "") text.innerHTML = "환영합니다!";
+      else text.innerHTML = "";
+    }
+
+    function changeColor() {
+      document.getElementById("msg").style.color = "red";
+    }
+
+    function showInput() {
+      const name = document.getElementById("userInput").value;
+      document.getElementById("msg").innerHTML = name;
+    }
+  </script>
+</body>
+</html>
